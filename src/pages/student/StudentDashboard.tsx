@@ -16,7 +16,7 @@ const StudentDashboard: React.FC = () => {
         console.error(err);
 
         setProfile({
-          name: "JANE DOE",
+          name: "JANE",
           status: "Active",
           admissionNo: "E25CSEU0001",
           admissionYear: "2025",
