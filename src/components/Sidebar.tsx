@@ -40,7 +40,7 @@ export default function Sidebar() {
     <div className="flex flex-col h-full">
       {/* Header / Brand */}
       <div className="flex items-center gap-3 pb-6 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-600 to-blue-700 flex items-center justify-center font-bold tracking-wider text-white shadow-md shadow-blue-600/10 flex-shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-600 to-blue-700 flex items-center justify-center font-bold tracking-wider text-white shadow-md shadow-blue-600/10 shrink-0">
           B
         </div>
         <div className="min-w-0">
@@ -88,11 +88,6 @@ export default function Sidebar() {
               {activeIndicator("/admin/classes")}
               <BookOpen size={18} />
               <span>Classes</span>
-            </Link>
-            <Link to="/admin/enrollment" className={linkClass("/admin/enrollment")} onClick={closeMobileMenu}>
-              {activeIndicator("/admin/enrollment")}
-              <User size={18} />
-              <span>Enrollment</span>
             </Link>
             <Link to="/admin/device-management" className={linkClass("/admin/device-management")} onClick={closeMobileMenu}>
               {activeIndicator("/admin/device-management")}

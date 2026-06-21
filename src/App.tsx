@@ -4,7 +4,6 @@ import Signup from "./pages/Signup";
 import Layout from "./components/Layout";
 import DataTables from "./pages/admin/DataTables";
 import Classes from "./pages/admin/Classes";
-import Enrollments from "./pages/admin/Enrollments";
 import DeviceManagement from "./pages/admin/DeviceManagement";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherClasses from "./pages/teacher/TeacherClasses";
@@ -28,7 +27,6 @@ export default function AppRoutes() {
           <Route index element={<DataTables />} />
           <Route path="classes" element={<Classes />} />
           <Route path="users" element={<DataTables />} />
-          <Route path="enrollment" element={<Enrollments />} />
           <Route path="device-management" element={<DeviceManagement />} />
         </Route>
 

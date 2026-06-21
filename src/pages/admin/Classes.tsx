@@ -11,6 +11,12 @@ import {
   X,
   CheckCircle2,
   Circle,
+  Users,
+  UserPlus,
+  Upload,
+  FileSpreadsheet,
+  AlertCircle,
+  Check,
 } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
 
@@ -47,6 +53,28 @@ interface ClassData {
   sessions: SessionData[];
 }
 
+interface Enrollment {
+  id: number;
+  classId: number;
+  studentId: number;
+  class: { id: number; name: string };
+  student: {
+    userId: number;
+    name: string;
+    email: string;
+    role: string;
+  };
+}
+
+interface CsvEnrollResult {
+  message: string;
+  totalRowsInFile: number;
+  newlyEnrolled: number;
+  alreadyEnrolled: string[];
+  notFound: string[];
+  wrongRole: string[];
+}
+
 const WEEKDAYS = [
   "MONDAY",
   "TUESDAY",
@@ -72,6 +100,8 @@ const WEEKDAY_LABELS: Record<Weekday, string> = {
 export default function Classes() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [teachers, setTeachers] = useState<User[]>([]);
+  const [students, setStudents] = useState<User[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
 
   const [loading, setLoading] = useState(true);
 
@@ -109,6 +139,44 @@ export default function Classes() {
   const [sessionsPanelClass, setSessionsPanelClass] =
     useState<ClassData | null>(null);
 
+  // ===== Roster panel (replaces the old standalone Enrollments page) =====
+
+  const [rosterClass, setRosterClass] =
+    useState<ClassData | null>(null);
+
+  const [rosterSearch, setRosterSearch] =
+    useState("");
+
+  const [showEnrollModal, setShowEnrollModal] =
+    useState(false);
+
+  const [modalStudentSearch, setModalStudentSearch] =
+    useState("");
+
+  const [selectedStudentIds, setSelectedStudentIds] =
+    useState<number[]>([]);
+
+  const [submitting, setSubmitting] =
+    useState(false);
+
+  const [showBulkConfirm, setShowBulkConfirm] =
+    useState(false);
+
+  const [showCsvModal, setShowCsvModal] =
+    useState(false);
+
+  const [csvFile, setCsvFile] =
+    useState<File | null>(null);
+
+  const [csvSubmitting, setCsvSubmitting] =
+    useState(false);
+
+  const [csvResult, setCsvResult] =
+    useState<CsvEnrollResult | null>(null);
+
+  const [csvError, setCsvError] =
+    useState<string | null>(null);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -117,17 +185,18 @@ export default function Classes() {
     try {
       setLoading(true);
 
-      const [classesRes, teachersRes] =
+      const [classesRes, teachersRes, studentsRes, enrollmentsRes] =
         await Promise.all([
           adminApi.getAllClasses(),
           adminApi.getAllTeachers(),
+          adminApi.getAllStudents(),
+          adminApi.getAllEnrollments(),
         ]);
 
       setClasses(classesRes || []);
-
-      setTeachers(
-        teachersRes.teachers || []
-      );
+      setTeachers(teachersRes.teachers || []);
+      setStudents(studentsRes.students || []);
+      setEnrollments(enrollmentsRes || []);
     } catch (error) {
       console.error(
         "Failed to fetch classes:",
@@ -256,6 +325,165 @@ export default function Classes() {
 
   const openSessionsCount = (cls: ClassData) =>
     cls.sessions?.filter((s) => s.isAttendanceOpen).length ?? 0;
+
+  // ===== Roster panel logic =====
+
+  const rosterEnrollments = useMemo(() => {
+    if (!rosterClass) return [];
+    return enrollments.filter((e) => e.classId === rosterClass.id);
+  }, [enrollments, rosterClass]);
+
+  const filteredRoster = useMemo(() => {
+    const search = rosterSearch.toLowerCase();
+    if (!search) return rosterEnrollments;
+    return rosterEnrollments.filter(
+      (e) =>
+        e.student.name.toLowerCase().includes(search) ||
+        e.student.email.toLowerCase().includes(search)
+    );
+  }, [rosterEnrollments, rosterSearch]);
+
+  const openRoster = (cls: ClassData) => {
+    setRosterClass(cls);
+    setRosterSearch("");
+  };
+
+  const closeRoster = () => {
+    setRosterClass(null);
+    setRosterSearch("");
+    setShowEnrollModal(false);
+    setShowCsvModal(false);
+    setShowBulkConfirm(false);
+  };
+
+  // Students not yet enrolled in the open roster's class.
+  const enrollableStudents = useMemo(() => {
+    if (!rosterClass) return [];
+    const enrolledIds = new Set(
+      rosterEnrollments.map((e) => e.studentId)
+    );
+    return students.filter(
+      (s) => s.role === "STUDENT" && !enrolledIds.has(s.userId)
+    );
+  }, [students, rosterEnrollments, rosterClass]);
+
+  const searchableModalStudents = useMemo(() => {
+    if (!modalStudentSearch) return enrollableStudents;
+    const search = modalStudentSearch.toLowerCase();
+    return enrollableStudents.filter(
+      (s) =>
+        s.name.toLowerCase().includes(search) ||
+        s.email.toLowerCase().includes(search)
+    );
+  }, [enrollableStudents, modalStudentSearch]);
+
+  const toggleStudentSelection = (studentId: number) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const handleSelectAllVisible = () => {
+    const visibleIds = searchableModalStudents.map((s) => s.userId);
+    const allSelected = visibleIds.every((id) =>
+      selectedStudentIds.includes(id)
+    );
+
+    if (allSelected) {
+      setSelectedStudentIds((prev) =>
+        prev.filter((id) => !visibleIds.includes(id))
+      );
+    } else {
+      setSelectedStudentIds((prev) =>
+        Array.from(new Set([...prev, ...visibleIds]))
+      );
+    }
+  };
+
+  const handleEnrollStudents = async () => {
+    if (!rosterClass || selectedStudentIds.length === 0) return;
+
+    try {
+      setSubmitting(true);
+      await adminApi.enrollMultipleStudents(
+        rosterClass.id,
+        selectedStudentIds
+      );
+      setShowEnrollModal(false);
+      setSelectedStudentIds([]);
+      setModalStudentSearch("");
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to enroll students");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEnrollAll = async () => {
+    if (!rosterClass) return;
+
+    try {
+      setSubmitting(true);
+      await adminApi.enrollAllStudents(rosterClass.id);
+      setShowBulkConfirm(false);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to enroll all students");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCsvFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0] || null;
+    setCsvResult(null);
+    setCsvError(null);
+
+    if (file && !file.name.toLowerCase().endsWith(".csv")) {
+      setCsvError("Please select a .csv file");
+      setCsvFile(null);
+      return;
+    }
+
+    setCsvFile(file);
+  };
+
+  const handleCsvSubmit = async () => {
+    if (!rosterClass || !csvFile) return;
+
+    try {
+      setCsvSubmitting(true);
+      setCsvError(null);
+
+      const data = await adminApi.enrollByCsv(rosterClass.id, csvFile);
+
+      setCsvResult(data);
+      await fetchData();
+    } catch (err: any) {
+      console.error(err);
+      setCsvError(
+        err?.response?.data?.message ||
+          "Failed to enroll students from CSV"
+      );
+    } finally {
+      setCsvSubmitting(false);
+    }
+  };
+
+  const resetCsvModal = () => {
+    setShowCsvModal(false);
+    setCsvFile(null);
+    setCsvResult(null);
+    setCsvError(null);
+    setCsvSubmitting(false);
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -443,17 +671,21 @@ export default function Classes() {
                       </td>
 
                       <td className="px-6 py-4">
-                        {
-                          cls
-                            .enrollments
-                            ?.length
-                        }
+                        <button
+                          onClick={() => openRoster(cls)}
+                          className="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-lg bg-blue-100 hover:bg-blue-300 text-sm transition-colors"
+                        >
+                          <Users className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="font-medium text-gray-900">
+                            {cls.enrollments?.length ?? 0}
+                          </span>
+                        </button>
                       </td>
 
                       <td className="px-6 py-4">
                         <button
                           onClick={() => setSessionsPanelClass(cls)}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg  bg-white hover:bg-gray-50 text-sm transition-colors"
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer bg-blue-100 hover:bg-blue-300 text-sm transition-colors"
                         >
                           <Calendar className="w-3.5 h-3.5 text-gray-400" />
                           <span className="font-medium text-gray-900">
@@ -761,6 +993,411 @@ export default function Classes() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Roster Side Panel */}
+
+      {rosterClass && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={closeRoster}
+          />
+
+          <div className="relative bg-white w-full max-w-md h-full shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="p-6 flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {rosterClass.name}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {rosterEnrollments.length} students enrolled
+                </p>
+              </div>
+              <button
+                onClick={closeRoster}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="p-4 flex gap-2 flex-wrap">
+              <button
+                onClick={() => setShowEnrollModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#6d1d5e] text-white text-sm font-semibold hover:opacity-90 transition-colors"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Enroll Students
+              </button>
+              <button
+                onClick={() => setShowBulkConfirm(true)}
+                className="px-3 py-2 rounded-lg border bg-white text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Enroll All
+              </button>
+              <button
+                onClick={() => setShowCsvModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border bg-white text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Upload CSV
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="p-4 ">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search enrolled students..."
+                  value={rosterSearch}
+                  onChange={(e) => setRosterSearch(e.target.value)}
+                  className="pl-10 pr-4 py-2 border rounded-lg w-full text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Roster list */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredRoster.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-16">
+                  {rosterEnrollments.length === 0
+                    ? "No students enrolled yet."
+                    : "No students match your search."}
+                </p>
+              ) : (
+                <div className="divide-y">
+                  {filteredRoster.map((enrollment) => (
+                    <div
+                      key={enrollment.id}
+                      className="px-6 py-3.5 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {enrollment.student.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {enrollment.student.email}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Enroll Students Modal (scoped to rosterClass) */}
+          {showEnrollModal && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10 p-6">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
+                <div className="p-5 flex justify-between items-center">
+                  <h3 className="font-bold text-gray-900">
+                    Enroll Students — {rosterClass.name}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowEnrollModal(false);
+                      setSelectedStudentIds([]);
+                      setModalStudentSearch("");
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      value={modalStudentSearch}
+                      onChange={(e) =>
+                        setModalStudentSearch(e.target.value)
+                      }
+                      className="pl-10 pr-4 py-2 border rounded-lg w-full text-sm"
+                    />
+                  </div>
+                  {searchableModalStudents.length > 0 && (
+                    <button
+                      onClick={handleSelectAllVisible}
+                      className="text-xs text-[#6d1d5e] font-semibold mt-2 hover:underline"
+                    >
+                      {searchableModalStudents.every((s) =>
+                        selectedStudentIds.includes(s.userId)
+                      )
+                        ? "Deselect all"
+                        : "Select all visible"}
+                    </button>
+                  )}
+                </div>
+
+                <div className="overflow-y-auto flex-1">
+                  {searchableModalStudents.length === 0 ? (
+                    <p className="text-center text-gray-400 text-sm py-12">
+                      {enrollableStudents.length === 0
+                        ? "All students are already enrolled."
+                        : "No students match your search."}
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {searchableModalStudents.map((student) => {
+                        const checked = selectedStudentIds.includes(
+                          student.userId
+                        );
+                        return (
+                          <label
+                            key={student.userId}
+                            className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                toggleStudentSelection(student.userId)
+                              }
+                              className="rounded"
+                            />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {student.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {student.email}
+                              </p>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setShowEnrollModal(false);
+                      setSelectedStudentIds([]);
+                      setModalStudentSearch("");
+                    }}
+                    className="px-4 py-2 border rounded-lg text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={
+                      submitting || selectedStudentIds.length === 0
+                    }
+                    onClick={handleEnrollStudents}
+                    className="px-4 py-2 bg-[#6d1d5e] text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+                  >
+                    {submitting
+                      ? "Processing..."
+                      : `Enroll Selected (${selectedStudentIds.length})`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Enroll All Confirm (scoped to rosterClass) */}
+          {showBulkConfirm && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10 p-6">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+                <h3 className="font-bold text-gray-900 mb-2">
+                  Enroll All Students
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  This will enroll every student in the system into{" "}
+                  <span className="font-medium text-gray-700">
+                    {rosterClass.name}
+                  </span>
+                  . Students already enrolled will be skipped.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowBulkConfirm(false)}
+                    className="px-4 py-2 border rounded-lg text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={submitting}
+                    onClick={handleEnrollAll}
+                    className="px-4 py-2 bg-[#6d1d5e] text-white rounded-lg text-sm font-semibold disabled:opacity-50"
+                  >
+                    {submitting ? "Enrolling..." : "Enroll All"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CSV Upload Modal (scoped to rosterClass) */}
+          {showCsvModal && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10 p-6">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]">
+                <div className="p-5 flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900">
+                      Upload CSV — {rosterClass.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Enroll students in bulk using a CSV of email
+                      addresses.
+                    </p>
+                  </div>
+                  <button
+                    onClick={resetCsvModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-5 overflow-y-auto flex-1 space-y-4">
+                  {csvResult ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 bg-green-50 text-green-800 px-4 py-3 rounded-lg">
+                        <Check className="w-5 h-5 shrink-0" />
+                        <p className="text-sm font-semibold">
+                          {csvResult.newlyEnrolled} of{" "}
+                          {csvResult.totalRowsInFile} students enrolled
+                          successfully.
+                        </p>
+                      </div>
+
+                      {csvResult.alreadyEnrolled.length > 0 && (
+                        <div className="text-sm">
+                          <p className="font-semibold text-gray-700 mb-1">
+                            Already enrolled (
+                            {csvResult.alreadyEnrolled.length})
+                          </p>
+                          <div className="bg-gray-50 border rounded-lg p-3 max-h-24 overflow-y-auto text-gray-600 space-y-0.5">
+                            {csvResult.alreadyEnrolled.map((email) => (
+                              <p key={email} className="truncate">
+                                {email}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {csvResult.wrongRole.length > 0 && (
+                        <div className="text-sm">
+                          <p className="font-semibold text-gray-700 mb-1">
+                            Not a student account (
+                            {csvResult.wrongRole.length})
+                          </p>
+                          <div className="bg-gray-50 border rounded-lg p-3 max-h-24 overflow-y-auto text-gray-600 space-y-0.5">
+                            {csvResult.wrongRole.map((email) => (
+                              <p key={email} className="truncate">
+                                {email}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {csvResult.notFound.length > 0 && (
+                        <div className="text-sm">
+                          <p className="font-semibold text-gray-700 mb-1">
+                            Not found ({csvResult.notFound.length})
+                          </p>
+                          <div className="bg-gray-50 border rounded-lg p-3 max-h-24 overflow-y-auto text-gray-600 space-y-0.5">
+                            {csvResult.notFound.map((email) => (
+                              <p key={email} className="truncate">
+                                {email}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <label
+                        htmlFor="csv-file-input"
+                        className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-xl py-8 px-4 cursor-pointer hover:border-[#6d1d5e]/40 hover:bg-gray-50 transition-colors"
+                      >
+                        <FileSpreadsheet className="w-8 h-8 text-gray-400" />
+                        {csvFile ? (
+                          <p className="text-sm font-semibold text-gray-700">
+                            {csvFile.name}
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-sm font-semibold text-gray-600">
+                              Click to select a CSV file
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              One email address per row
+                            </p>
+                          </>
+                        )}
+                        <input
+                          id="csv-file-input"
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleCsvFileChange}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {csvError && (
+                        <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <p>{csvError}</p>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-400">
+                        The file should contain one email per line. A
+                        header row (e.g. "email") is optional. Students
+                        not found, already enrolled, or without a
+                        student account will be skipped and listed in
+                        the results.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <div className="p-5 border-t bg-gray-50 flex justify-end gap-3">
+                  {csvResult ? (
+                    <button
+                      onClick={resetCsvModal}
+                      className="px-5 py-2.5 bg-[#6d1d5e] text-white rounded-lg text-sm font-bold hover:opacity-90 transition-colors"
+                    >
+                      Done
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={resetCsvModal}
+                        className="px-4 py-2.5 border bg-white rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        disabled={csvSubmitting || !csvFile}
+                        onClick={handleCsvSubmit}
+                        className="px-5 py-2.5 bg-[#6d1d5e] text-white rounded-lg text-sm font-bold hover:opacity-90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                      >
+                        {csvSubmitting ? "Uploading..." : "Upload & Enroll"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
