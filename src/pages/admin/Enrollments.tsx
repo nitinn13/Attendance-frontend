@@ -621,7 +621,7 @@ export default function Enrollments() {
       {showEnrollModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6 animate-fadeIn">
           {/* Expanded container to max-w-5xl / max-w-6xl with optimized taller layouts */}
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl lg:max-w-6xl flex flex-col h-[700px] max-h-[90vh]">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl lg:max-w-6xl flex flex-col h-175 max-h-[90vh]">
             
             {/* Modal Header */}
             <div className="p-6 -b flex justify-between items-start bg-gray-50 rounded-t-xl">
@@ -720,7 +720,7 @@ export default function Enrollments() {
                               }`}
                             >
                               <div
-                                className={`w-5 h-5 rounded-md  flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
+                                className={`w-5 h-5 rounded-md  flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
                                   isChecked
                                     ? "bg-[#6d1d5e] -[#6d1d5e] text-white"
                                     : "-gray-300 bg-white"
@@ -873,7 +873,7 @@ export default function Enrollments() {
               {csvResult ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 bg-green-50  -green-200 text-green-800 px-4 py-3 rounded-lg">
-                    <Check className="w-5 h-5 flex-shrink-0" />
+                    <Check className="w-5 h-5 shrink-0" />
                     <p className="text-sm font-semibold">
                       {csvResult.newlyEnrolled} of{" "}
                       {csvResult.totalRowsInFile} students enrolled
@@ -986,7 +986,7 @@ export default function Enrollments() {
 
                   {csvError && (
                     <div className="flex items-start gap-2 bg-red-50  -red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                       <p>{csvError}</p>
                     </div>
                   )}

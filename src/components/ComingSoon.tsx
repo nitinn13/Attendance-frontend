@@ -1,4 +1,4 @@
-import { Construction, Layers, Globe, ArrowRight } from 'lucide-react';
+import { Construction, Layers, Globe } from 'lucide-react';
 
 const ComingSoon = () => {
   return (
@@ -17,7 +17,7 @@ const ComingSoon = () => {
       </header>
 
       {/* Main Hero Content */}
-      <main className="max-w-3xl mx-auto px-6 text-center flex flex-col items-center justify-center flex-grow -mt-12">
+      <main className="max-w-3xl mx-auto px-6 text-center flex flex-col items-center justify-center grow -mt-12">
         
         {/* Subtle Status Badge */}
         <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-8 animate-pulse">

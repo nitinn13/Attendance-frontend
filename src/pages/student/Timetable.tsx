@@ -73,7 +73,7 @@ const QRScannerModal: React.FC<{
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100">
-        <div className="relative bg-gradient-to-r from-slate-900 to-indigo-950 px-6 py-6 text-white text-center">
+        <div className="relative bg-linear-to-r from-slate-900 to-indigo-950 px-6 py-6 text-white text-center">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors group"
@@ -386,7 +386,7 @@ export default function Timetable() {
     <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-8 font-sans antialiased text-slate-800">
       <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 bg-linear-to-r from-slate-900 via-indigo-950 to-blue-900 bg-clip-text ">
             My Timetable
           </h1>
           <p className="text-sm font-medium text-slate-400 mt-1">
@@ -414,7 +414,7 @@ export default function Timetable() {
             </svg>
           </button>
 
-          <div className="relative flex items-center gap-2 px-4 group cursor-pointer min-w-[140px] justify-center">
+          <div className="relative flex items-center gap-2 px-4 group cursor-pointer min-w-35 justify-center">
             <span className="text-sm font-bold text-slate-700 tracking-tight">
               {legibleDateHeader}
             </span>

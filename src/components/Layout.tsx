@@ -29,7 +29,7 @@ export default function Layout() {
           </div>
 
           {/* Role Display */}
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {isTeacher && (
               <span className="px-2 sm:px-3 py-1 rounded bg-gray-800 text-white text-xs sm:text-sm font-medium">
                 Teacher

@@ -67,7 +67,7 @@ const TeacherClasses = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-white">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -159,7 +159,7 @@ const TeacherClasses = () => {
                 className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100"
               >
                 {/* Card Header */}
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+                <div className="bg-linear-to-r from-blue-500 to-blue-600 p-6 text-white">
                   <div className="flex items-start justify-between mb-2">
                     <BookOpen className="w-8 h-8" />
                     {openSessionsToday(classItem) && (
