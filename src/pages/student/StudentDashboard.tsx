@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { studentApi } from "../../api/studentApi";
 import { Outlet } from "react-router-dom"; // for nested routes
 
 const StudentDashboard: React.FC = () => {
@@ -7,14 +6,12 @@ const StudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const studentId = "12345"; // TODO: replace with logged-in user’s ID
 
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
-        const p = await studentApi.getProfile(studentId);
-        setProfile(p);
+        throw error;
       } catch (err) {
         console.error(err);
 
