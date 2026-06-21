@@ -1,0 +1,193 @@
+import axios from "axios";
+import { client } from "./adminConfig";
+
+
+export const adminApi = {
+  // ======================
+  // Students
+  // ======================
+
+  async getAllStudents() {
+    const res = await client.get(
+      "/admin/all-students"
+    );
+
+    return res.data;
+  },
+
+  // Returns:
+  // {
+  //   total: number,
+  //   students: User[]
+  // }
+
+  // ======================
+  // Teachers
+  // ======================
+
+  async getAllTeachers() {
+    const res = await client.get(
+      "/admin/all-teachers"
+    );
+
+    return res.data;
+  },
+
+  // Returns:
+  // {
+  //   total: number,
+  //   teachers: User[]
+  // }
+
+  // ======================
+  // Classes
+  // ======================
+
+  async getAllClasses() {
+    const res = await client.get(
+      "/classes/allClasses"
+    );
+
+    return res.data;
+  },
+
+  // Returns:
+  // [
+  //   {
+  //     id,
+  //     name,
+  //     teacherId,
+  //     recurrenceDays: ["MONDAY", "WEDNESDAY", ...],
+  //     startDate,
+  //     endDate,
+  //     teacher,
+  //     enrollments: [],
+  //     sessions: [{ id, classId, date, isAttendanceOpen }, ...]
+  //   }
+  // ]
+
+  async createClass(
+    name: string,
+    teacherId: number,
+    recurrenceDays: string[],
+    startDate: string,
+    endDate: string
+  ) {
+    const res = await client.post(
+      "/classes/create",
+      {
+        name,
+        teacherId,
+        recurrenceDays,
+        startDate,
+        endDate,
+      }
+    );
+
+    return res.data;
+  },
+
+  // Returns:
+  // {
+  //   message,
+  //   newClass: {
+  //     id, name, teacherId, recurrenceDays,
+  //     startDate, endDate, sessionsCreated
+  //   }
+  // }
+
+  // ======================
+  // Enrollments
+  // ======================
+
+  async getAllEnrollments() {
+    const res = await client.get(
+      "/classes/all-enrollments"
+    );
+
+    return res.data;
+  },
+
+  async enrollStudent(
+    classId: number,
+    studentId: number
+  ) {
+    const res = await client.post(
+      "/classes/enroll-students",
+      {
+        classId,
+        studentId,
+      }
+    );
+
+    return res.data;
+  },
+
+  async enrollMultipleStudents(
+    classId: number,
+    studentIds: number[]
+  ) {
+    const res = await client.post(
+      "/classes/enroll-multiple-students",
+      {
+        classId,
+        studentIds,
+      }
+    );
+
+    return res.data;
+  },
+
+  async enrollAllStudents(
+    classId: number
+  ) {
+    const res = await client.post(
+      "/classes/enroll-all-students",
+      {
+        classId,
+      }
+    );
+
+    return res.data;
+  },
+
+  async enrollByCsv(
+    classId: number,
+    file: File
+  ) {
+    const formData = new FormData();
+    formData.append("classId", String(classId));
+    formData.append("file", file);
+
+    const res = await client.post(
+      "/classes/enroll-csv",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    return res.data;
+  },
+
+  async deleteDevice(email: string) {
+    const res = await client.post(
+      "/auth/delete-device",
+      {
+        email,
+      }
+    );
+
+    return res.data;
+  },
+
+  async deleteAllDevices() {
+    const res = await client.post(
+      "/auth/delete-alldevices"
+    );
+
+    return res.data;
+  },
+};
