@@ -12,13 +12,20 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const universities = [
-    'Bennett University',
-    'UPES',
-    'Thapar Institute of Engineering and Technology',
-    'SRM Institute of Science and Technology',
-    'Shiv Nadar University',
-  ];
+const universities = [
+  'Bennett University',
+  'IILM',
+  'JECRC',
+  'LPU',
+  'MRU',
+  'Sharda',
+  'SPSU',
+  'SRM Institute of Science and Technology',
+  'Takshashila',
+  'Thapar Institute of Engineering and Technology',
+  'UPES',
+  'Other'
+];
 
   async function handleSubmit(e: any) {
     e.preventDefault();
