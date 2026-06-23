@@ -41,7 +41,7 @@ export default function AppRoutes() {
 
         {/* Student routes */}
         <Route path="student" element={<Layout />}>
-          <Route index element={<StudentDashboard />} />
+          <Route index element={<Timetable />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="timetable" element={<Timetable />} />
           <Route path="*" element={<ComingSoon />} />
