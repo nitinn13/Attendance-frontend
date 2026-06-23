@@ -16,8 +16,14 @@ const QrScanner: React.FC<QrScannerProps> = ({
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    
+    // 👇 This ref acts as an instant synchronous lock to prevent double-scanning
+    const isLockedRef = useRef<boolean>(false);
+
     useEffect(() => {
         let mounted = true;
+        // Reset lock whenever the component mounts or constraints change
+        isLockedRef.current = false;
 
         const startCamera = async () => {
             try {
@@ -81,6 +87,9 @@ const QrScanner: React.FC<QrScannerProps> = ({
         }
 
         intervalRef.current = setInterval(() => {
+            // 👇 If the lock is true, stop looking at video frames entirely
+            if (isLockedRef.current) return;
+
             const video = videoRef.current;
             const canvas = canvasRef.current;
 
@@ -114,14 +123,25 @@ const QrScanner: React.FC<QrScannerProps> = ({
                 imageData.height
             );
 
-            if (code) {
+            // Check code found AND ensure we haven't already processed a code
+            if (code && !isLockedRef.current) {
+                // 1. Instantly trigger the lock synchronously
+                isLockedRef.current = true;
+                
+                // 2. Kill the interval loop immediately to preserve CPU/battery
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+
+                // 3. Bubble up the single decoded payload
                 onDecode?.(code.data);
             }
         }, 300);
     };
 
     return (
-        <div className="w-full h-full">
+        <div className="w-full h-full relative">
             <video
                 ref={videoRef}
                 playsInline
