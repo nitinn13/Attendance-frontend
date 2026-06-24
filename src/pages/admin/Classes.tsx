@@ -17,6 +17,8 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Check,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { adminApi } from "../../api/adminApi";
 
@@ -48,6 +50,7 @@ interface ClassData {
   recurrenceDays: Weekday[];
   startDate: string;
   endDate: string;
+  createdAt: string;
   teacher: Teacher;
   enrollments: any[];
   sessions: SessionData[];
@@ -139,6 +142,15 @@ export default function Classes() {
   const [sessionsPanelClass, setSessionsPanelClass] =
     useState<ClassData | null>(null);
 
+  const [editingClass, setEditingClass] =
+    useState<ClassData | null>(null);
+
+  const [deleteConfirmClass, setDeleteConfirmClass] =
+    useState<ClassData | null>(null);
+
+  const [deleting, setDeleting] =
+    useState(false);
+
   // ===== Roster panel (replaces the old standalone Enrollments page) =====
 
   const [rosterClass, setRosterClass] =
@@ -207,6 +219,83 @@ export default function Classes() {
     }
   };
 
+  const openEditModal = (cls: ClassData) => {
+    setEditingClass(cls);
+    setClassName(cls.name);
+    setTeacherId(cls.teacherId);
+    setRecurrenceDays(cls.recurrenceDays);
+    setStartDate(cls.startDate.split("T")[0]);
+    setEndDate(cls.endDate.split("T")[0]);
+    setCreateError(null);
+    setShowModal(true);
+  };
+
+  const handleUpdateClass = async () => {
+    setCreateError(null);
+
+    if (!className.trim() || !teacherId || recurrenceDays.length === 0 || !startDate || !endDate) {
+      setCreateError("Please fill all fields and select at least one weekday");
+      return;
+    }
+
+    if (endDate < startDate) {
+      setCreateError("End date must be on or after start date");
+      return;
+    }
+
+    try {
+      setCreating(true);
+
+      await adminApi.updateClass(
+        editingClass!.id,
+        className.trim(),
+        Number(teacherId),
+        recurrenceDays,
+        startDate,
+        endDate
+      );
+
+      setShowModal(false);
+      setEditingClass(null);
+      setClassName("");
+      setTeacherId("");
+      setRecurrenceDays([]);
+      setStartDate("");
+      setEndDate("");
+
+      await fetchData();
+    } catch (error: any) {
+      console.error("Update class error:", error);
+      setCreateError(
+        error?.response?.data?.message || "Failed to update class"
+      );
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDeleteClass = async () => {
+    if (!deleteConfirmClass) return;
+
+    try {
+      setDeleting(true);
+      await adminApi.deleteClass(deleteConfirmClass.id);
+      setDeleteConfirmClass(null);
+
+      // Close roster panel if it was open for this class.
+      if (rosterClass?.id === deleteConfirmClass.id) {
+        closeRoster();
+      }
+
+      await fetchData();
+    } catch (error: any) {
+      console.error("Delete class error:", error);
+      alert(error?.response?.data?.message || "Failed to delete class");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const toggleWeekday = (day: Weekday) => {
     setRecurrenceDays((prev) =>
       prev.includes(day)
@@ -265,7 +354,7 @@ export default function Classes() {
 
       setCreateError(
         error?.response?.data?.message ||
-          "Failed to create class"
+        "Failed to create class"
       );
     } finally {
       setCreating(false);
@@ -277,7 +366,7 @@ export default function Classes() {
       const search =
         searchTerm.toLowerCase();
 
-      return classes.filter(
+      const filtered = classes.filter(
         (cls) =>
           cls.name
             ?.toLowerCase()
@@ -289,6 +378,11 @@ export default function Classes() {
             .toString()
             .includes(search)
       );
+
+      // Sort by createdAt descending (newest first)
+      return filtered.sort((a, b) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
     }, [classes, searchTerm]);
 
   const totalPages = Math.max(
@@ -470,7 +564,7 @@ export default function Classes() {
       console.error(err);
       setCsvError(
         err?.response?.data?.message ||
-          "Failed to enroll students from CSV"
+        "Failed to enroll students from CSV"
       );
     } finally {
       setCsvSubmitting(false);
@@ -620,6 +714,10 @@ export default function Classes() {
                 <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                   Sessions
                 </th>
+
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -627,7 +725,7 @@ export default function Classes() {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center py-12 text-gray-500"
                   >
                     Loading...
@@ -637,7 +735,7 @@ export default function Classes() {
                 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center py-12 text-gray-500"
                   >
                     No classes found
@@ -673,7 +771,7 @@ export default function Classes() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => openRoster(cls)}
-                          className="flex items-center gap-2 px-3 py-1.5 cursor-pointer rounded-lg bg-blue-100 hover:bg-blue-300 text-sm transition-colors"
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50 text-sm transition-colors"
                         >
                           <Users className="w-3.5 h-3.5 text-gray-400" />
                           <span className="font-medium text-gray-900">
@@ -685,7 +783,7 @@ export default function Classes() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => setSessionsPanelClass(cls)}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer bg-blue-100 hover:bg-blue-300 text-sm transition-colors"
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50 text-sm transition-colors"
                         >
                           <Calendar className="w-3.5 h-3.5 text-gray-400" />
                           <span className="font-medium text-gray-900">
@@ -698,6 +796,25 @@ export default function Classes() {
                           )}
                         </button>
                       </td>
+
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openEditModal(cls)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                            title="Edit class"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmClass(cls)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete class"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   )
                 )
@@ -708,7 +825,7 @@ export default function Classes() {
 
         {/* Footer */}
 
-        <div className="-t px-6 py-4 flex items-center justify-between">
+        <div className="border-t px-6 py-4 flex items-center justify-between">
           <p className="text-sm text-gray-500">
             Showing{" "}
             {
@@ -773,7 +890,7 @@ export default function Classes() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-lg">
             <h2 className="text-xl font-bold mb-5">
-              Create Class
+              {editingClass ? "Edit Class" : "Create Class"}
             </h2>
 
             <div className="space-y-4">
@@ -807,11 +924,10 @@ export default function Classes() {
                         key={day}
                         type="button"
                         onClick={() => toggleWeekday(day)}
-                        className={`px-3 py-2 rounded-lg text-xs font-semibold  transition-colors ${
-                          active
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold  transition-colors ${active
                             ? "bg-[#6d1d5e] text-white -[#6d1d5e]"
                             : "bg-white text-gray-600 -gray-300 hover:-gray-400"
-                        }`}
+                          }`}
                       >
                         {WEEKDAY_LABELS[day]}
                       </button>
@@ -901,23 +1017,27 @@ export default function Classes() {
               <button
                 onClick={() => {
                   setShowModal(false);
+                  setEditingClass(null);
                   setCreateError(null);
+                  setClassName("");
+                  setTeacherId("");
+                  setRecurrenceDays([]);
+                  setStartDate("");
+                  setEndDate("");
                 }}
-                className="px-4 py-2  rounded-lg"
+                className="px-4 py-2 border rounded-lg"
               >
                 Cancel
               </button>
 
               <button
                 disabled={creating}
-                onClick={
-                  handleCreateClass
-                }
+                onClick={editingClass ? handleUpdateClass : handleCreateClass}
                 className="px-4 py-2 bg-[#6d1d5e] text-white rounded-lg disabled:opacity-50"
               >
                 {creating
-                  ? "Creating..."
-                  : "Create Class"}
+                  ? editingClass ? "Saving..." : "Creating..."
+                  : editingClass ? "Save Changes" : "Create Class"}
               </button>
             </div>
           </div>
@@ -1007,7 +1127,7 @@ export default function Classes() {
 
           <div className="relative bg-white w-full max-w-md h-full shadow-2xl flex flex-col">
             {/* Header */}
-            <div className="p-6 flex justify-between items-start">
+            <div className="p-6 border-b flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">
                   {rosterClass.name}
@@ -1025,7 +1145,7 @@ export default function Classes() {
             </div>
 
             {/* Actions */}
-            <div className="p-4 flex gap-2 flex-wrap">
+            <div className="p-4 border-b flex gap-2 flex-wrap">
               <button
                 onClick={() => setShowEnrollModal(true)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#6d1d5e] text-white text-sm font-semibold hover:opacity-90 transition-colors"
@@ -1049,7 +1169,7 @@ export default function Classes() {
             </div>
 
             {/* Search */}
-            <div className="p-4 ">
+            <div className="p-4 border-b">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <input
@@ -1096,7 +1216,7 @@ export default function Classes() {
           {showEnrollModal && (
             <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10 p-6">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[80vh]">
-                <div className="p-5 flex justify-between items-center">
+                <div className="p-5 border-b flex justify-between items-center">
                   <h3 className="font-bold text-gray-900">
                     Enroll Students — {rosterClass.name}
                   </h3>
@@ -1112,7 +1232,7 @@ export default function Classes() {
                   </button>
                 </div>
 
-                <div className="p-4">
+                <div className="p-4 border-b">
                   <div className="relative">
                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                     <input
@@ -1180,7 +1300,7 @@ export default function Classes() {
                   )}
                 </div>
 
-                <div className="p-4 flex justify-end gap-3">
+                <div className="p-4 border-t flex justify-end gap-3">
                   <button
                     onClick={() => {
                       setShowEnrollModal(false);
@@ -1244,7 +1364,7 @@ export default function Classes() {
           {showCsvModal && (
             <div className="absolute inset-0 bg-black/30 flex items-center justify-center z-10 p-6">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[85vh]">
-                <div className="p-5 flex justify-between items-start">
+                <div className="p-5 border-b flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-gray-900">
                       Upload CSV — {rosterClass.name}
@@ -1265,7 +1385,7 @@ export default function Classes() {
                 <div className="p-5 overflow-y-auto flex-1 space-y-4">
                   {csvResult ? (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-3 bg-green-50 text-green-800 px-4 py-3 rounded-lg">
+                      <div className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
                         <Check className="w-5 h-5 shrink-0" />
                         <p className="text-sm font-semibold">
                           {csvResult.newlyEnrolled} of{" "}
@@ -1398,6 +1518,53 @@ export default function Classes() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+
+      {deleteConfirmClass && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-6">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-full bg-red-50">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Delete Class
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-2">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-gray-900">
+                {deleteConfirmClass.name}
+              </span>
+              ?
+            </p>
+            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-6">
+              This will permanently delete all {deleteConfirmClass.sessions?.length ?? 0} sessions,
+              all enrollments, and all attendance records for this class.
+              This cannot be undone.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirmClass(null)}
+                disabled={deleting}
+                className="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteClass}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deleting ? "Deleting..." : "Delete Class"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

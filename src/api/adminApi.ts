@@ -55,13 +55,8 @@ export const adminApi = {
   //   {
   //     id,
   //     name,
-  //     teacherId,
-  //     recurrenceDays: ["MONDAY", "WEDNESDAY", ...],
-  //     startDate,
-  //     endDate,
   //     teacher,
-  //     enrollments: [],
-  //     sessions: [{ id, classId, date, isAttendanceOpen }, ...]
+  //     enrollments:[]
   //   }
   // ]
 
@@ -72,28 +67,42 @@ export const adminApi = {
     startDate: string,
     endDate: string
   ) {
-    const res = await client.post(
-      "/classes/create",
-      {
-        name,
-        teacherId,
-        recurrenceDays,
-        startDate,
-        endDate,
-      }
-    );
-
+    const res = await client.post("/classes/create", {
+      name,
+      teacherId,
+      recurrenceDays,
+      startDate,
+      endDate,
+    });
     return res.data;
   },
 
-  // Returns:
-  // {
-  //   message,
-  //   newClass: {
-  //     id, name, teacherId, recurrenceDays,
-  //     startDate, endDate, sessionsCreated
-  //   }
-  // }
+  async updateClass(
+    classId: number,
+    name: string,
+    teacherId: number,
+    recurrenceDays: string[],
+    startDate: string,
+    endDate: string
+  ) {
+    const res = await client.put(`/classes/${classId}`, {
+      name,
+      teacherId,
+      recurrenceDays,
+      startDate,
+      endDate,
+    });
+    return res.data;
+  },
+
+  // Returns: { message, updatedClass: { id, name, teacherId, recurrenceDays, startDate, endDate, sessionsRecreated } }
+
+  async deleteClass(classId: number) {
+    const res = await client.delete(`/classes/${classId}`);
+    return res.data;
+  },
+
+  // Returns: { message, deletedClassId }
 
   // ======================
   // Enrollments
