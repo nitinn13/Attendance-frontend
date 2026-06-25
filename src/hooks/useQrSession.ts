@@ -62,6 +62,9 @@ export function useQrSession(
   };
 
   // Poll the QR service for the live, rotating QR image.
+  // 800ms interval keeps the displayed image at most ~1s stale, which
+  // combined with the server's 2-token grace window makes late scans safe
+  // even on slow networks.
   useEffect(() => {
     if (!sessionId || !qrState) return;
 
@@ -76,11 +79,13 @@ export function useQrSession(
       } catch (e) {
         console.error("Error polling QR session:", e);
       }
-    }, 2000);
+    }, 800);
 
     return () => clearInterval(interval);
+    // qrState is intentionally checked as a boolean (running vs not running)
+    // so the interval only runs while a QR session is active.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, qrState !== null]);
+  }, [sessionId, !!qrState]);
 
   // Poll the main backend's attendance roster for a live present-count.
   useEffect(() => {
@@ -101,7 +106,7 @@ export function useQrSession(
     const interval = setInterval(fetchCount, 3000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, qrState !== null]);
+  }, [sessionId, !!qrState]);
 
   // Stop the run automatically if the consumer unmounts while it's live
   // (e.g. teacher navigates away mid-scan). Opt-out via options.
