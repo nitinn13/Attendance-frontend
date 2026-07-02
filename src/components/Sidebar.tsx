@@ -15,10 +15,11 @@ export default function Sidebar() {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  const handleLogout = () => {
-    closeMobileMenu();
-    navigate("/");
-  };
+const handleLogout = () => {
+  closeMobileMenu();
+  localStorage.clear();
+  navigate("/");
+};
 
   // Light-themed modern active state styling
   const linkClass = (path: string) => {

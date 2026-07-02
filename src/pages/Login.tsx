@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, {  useState } from "react";
 import axios from "axios";
 import { Mail, Lock, LogIn } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, Navigate } from "react-router-dom";
 import { BACKEND_API } from "../api/config";
+import { getRoleFromToken } from "../components/Protectedroute";
 
 const Login = () => {
   const [email, setEmail] =
@@ -18,6 +19,19 @@ const Login = () => {
     useState("");
 
   const navigate = useNavigate();
+
+  const role = getRoleFromToken();
+
+  if (role) {
+    const roleHome = {
+      ADMIN: "/admin",
+      TEACHER: "/teacher",
+      STUDENT: "/student",
+    } as const;
+
+    return <Navigate to={roleHome[role]} replace />;
+  }
+
 
   async function handleSubmit(
     e: React.FormEvent<HTMLFormElement>
@@ -106,11 +120,10 @@ const Login = () => {
             onSubmit={
               handleSubmit
             }
-            className={`space-y-6 transition-opacity duration-200 ${
-              isLoading
-                ? "opacity-80"
-                : "opacity-100"
-            }`}
+            className={`space-y-6 transition-opacity duration-200 ${isLoading
+              ? "opacity-80"
+              : "opacity-100"
+              }`}
           >
             {/* Error */}
 
