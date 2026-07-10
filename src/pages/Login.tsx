@@ -1,5 +1,5 @@
-import React, {  useState } from "react";
-import axios from "axios";
+import React, { useState } from "react";
+import axios, { AxiosError } from "axios";
 import { Mail, Lock, LogIn } from "lucide-react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { BACKEND_API } from "../api/config";
@@ -83,14 +83,18 @@ const Login = () => {
         navigate("/admin");
       }
     } catch (err) {
-      console.error(err);
+  console.error(err);
 
-      setError(
-        "Invalid email or password OR login with original device"
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  if (err instanceof AxiosError) {
+    setError(
+      err.response?.data?.message ?? "Something went wrong"
+    );
+  } else {
+    setError("Something went wrong");
+  }
+} finally {
+  setIsLoading(false);
+}
   }
 
   return (
@@ -204,12 +208,12 @@ const Login = () => {
             {/* Forgot Password */}
 
             <div className="flex items-center justify-end">
-              <button
-                type="button"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             {/* Submit */}

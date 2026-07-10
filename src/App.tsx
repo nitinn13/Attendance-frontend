@@ -13,6 +13,8 @@ import Timetable from "./pages/student/Timetable";
 import ComingSoon from "./components/ComingSoon";
 import QrDisplay from "./pages/teacher/QrDisplay";
 import ProtectedRoute from "./components/Protectedroute";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 export default function AppRoutes() {
   return (
@@ -21,6 +23,8 @@ export default function AppRoutes() {
         {/* Public routes */}
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Admin routes — only ADMIN can access */}
         <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>

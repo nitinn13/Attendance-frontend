@@ -17,7 +17,7 @@ export default function Sidebar() {
 
 const handleLogout = () => {
   closeMobileMenu();
-  localStorage.clear();
+  localStorage.removeItem("token");
   navigate("/");
 };
 
