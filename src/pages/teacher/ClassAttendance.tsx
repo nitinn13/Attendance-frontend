@@ -9,6 +9,7 @@ import {
   QrCode,
   Search,
   Filter,
+  Download,
 } from "lucide-react";
 import { teacherApi } from "../../api/teacherApi";
 import type { TeacherClass, SessionAttendance } from "../../models/Teacher";
@@ -115,6 +116,49 @@ export default function ClassAttendance() {
     } finally {
       setTogglingSessionId(null);
     }
+  };
+
+  // CSV Export Function
+  const exportAttendanceCSV = () => {
+    if (!sessionAttendance || sessionAttendance.attendance.length === 0) {
+      alert("No attendance data available to export.");
+      return;
+    }
+
+    // Get the session date for filename
+    const session = sortedSessions.find((s) => s.id === selectedSessionId);
+    const sessionDate = session ? new Date(session.date).toLocaleDateString("en-US") : "unknown-date";
+
+    // Prepare CSV headers and rows
+    const headers = ["Student Name", "Status", "Date", "Class Name"];
+    const rows = sessionAttendance.attendance.map((record) => [
+      `"${record.name}"`, // Wrap in quotes to handle commas in names
+      record.status,
+      session ? new Date(session.date).toLocaleString() : "N/A",
+      `"${classData?.name || "N/A"}"`,
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.join(",")),
+    ].join("\n");
+
+    // Create and download the CSV file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `attendance_${classData?.name || "class"}_${sessionDate}.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const formatDate = (dateString: string) =>
@@ -255,6 +299,17 @@ export default function ClassAttendance() {
                         >
                           <QrCode className="w-4 h-4" />
                           Start QR
+                        </button>
+                      )}
+
+                      {/* Export CSV Button */}
+                      {sessionAttendance && sessionAttendance.attendance.length > 0 && (
+                        <button
+                          onClick={exportAttendanceCSV}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
+                        >
+                          <Download className="w-4 h-4" />
+                          Export CSV
                         </button>
                       )}
                     </div>
